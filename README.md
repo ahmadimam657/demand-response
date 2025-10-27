@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo.png" alt="Demand Response Logo"/>
+  <img src="assets/logo.svg" alt="Demand Response Logo"/>
 </div>
 
 <div align="center">
@@ -8,6 +8,9 @@
 
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<!-- [![PyPI version](https://badge.fury.io/py/demand-response.svg)](https://badge.fury.io/py/demand-response) -->
+[![Tests](https://github.com/ahmadimam657/demand-response/actions/workflows/tests.yml/badge.svg)](https://github.com/ahmadimam657/demand-response/actions/workflows/tests.yml)
+
 </div>
 
 `demand-response` helps you optimize energy costs by intelligently shifting electricity demand across time periods using Mixed Integer Linear Programming (MILP). The library models energy flexibility as a virtual battery that can store and release energy to minimize total purchasing costs while respecting physical and operational constraints.

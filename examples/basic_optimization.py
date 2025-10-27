@@ -117,6 +117,11 @@ def display_configuration(storage: VirtualStorage) -> None:
         storage: VirtualStorage instance to display configuration for
         
     """
+    print("\n>>> Optimization Configuration:")
+    print(f"   Max demand advance: {storage.max_demand_advance} hours")
+    print(f"   Max demand delay: {storage.max_demand_delay} hours") 
+    print(f"   Max hourly purchase: {storage.max_hourly_purchase} kWh")
+    print(f"   Max transfer rate: {storage.max_rate} kWh")
 
 
 def display_results(
@@ -140,9 +145,18 @@ def display_results(
         savings_percent: Percentage cost savings
         
     """
-    optimized_demand - original_demand
+    demand_shift = optimized_demand - original_demand
     
+    print("\n>>> Optimization Results:")
+    print(f"   Original demand:    {original_demand}")
+    print(f"   Optimized demand:   {optimized_demand}")
+    print(f"   Demand shift:       {demand_shift}")
     
+    print("\n>>> Cost Analysis:")
+    print(f"   Original cost:      {original_cost:.{DECIMAL_PLACES}f} ct")
+    print(f"   Optimized cost:     {optimal_cost:.{DECIMAL_PLACES}f} ct")
+    print(f"   *** Cost savings:   {cost_savings:.{DECIMAL_PLACES}f} ct")
+    print(f"   >>> Savings percent: {savings_percent:.{PERCENT_DECIMAL_PLACES}f}%")
 
 
 def display_optimization_strategy(
@@ -158,6 +172,7 @@ def display_optimization_strategy(
         optimized_demand: Optimized demand profile array
         
     """
+    print("\n>>> Optimization Strategy:")
     
     # Find where energy was moved from and to
     shifts = optimized_demand - original_demand
@@ -166,14 +181,19 @@ def display_optimization_strategy(
     
     if len(positive_shifts) > 0:
         for idx in positive_shifts:
-            shifts[idx]
-            prices[idx]
+            shift_amount = shifts[idx]
+            price = prices[idx]
+            print(f"   [+] Added {shift_amount:.{DECIMAL_PLACES}f} kWh at hour {idx} "
+                  f"(price: {price:.1f} ct/kWh)")
     
     if len(negative_shifts) > 0:
         for idx in negative_shifts:
-            abs(shifts[idx])
-            prices[idx]
+            shift_amount = abs(shifts[idx])
+            price = prices[idx]
+            print(f"   [-] Removed {shift_amount:.{DECIMAL_PLACES}f} kWh from hour {idx} "
+                  f"(price: {price:.1f} ct/kWh)")
     
+    print("\n*** Energy was shifted from expensive hours to cheaper hours!")
 
 
 def main() -> dict:
@@ -186,15 +206,20 @@ def main() -> dict:
         ValueError: If optimization fails or returns invalid results
         
     """
+    print("*** Basic Demand Response Optimization Example ***")
+    print("=" * SEPARATOR_LENGTH)
     
     # Create test data
     prices, demand = create_test_data()
+    print(f"Price profile: {prices}")
+    print(f"Demand profile: {demand}")
     
     # Configure virtual storage
     storage = create_virtual_storage()
     display_configuration(storage)
     
     # Run optimization
+    print("\n>>> Running optimization...")
     try:
         result = storage.optimize_demand(prices, demand)
     except Exception as e:

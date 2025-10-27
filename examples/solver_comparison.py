@@ -10,8 +10,9 @@ for moving horizon optimization:
 Focuses on solve time comparison for moving horizon optimization.
 """
 
+import importlib.util
 import time
-from typing import Dict, Any
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -39,7 +40,7 @@ def generate_test_data(n_hours: int = 72) -> tuple[pd.DataFrame, pd.DataFrame]:
     return price_data, demand_data
 
 
-def test_moving_horizon_solver(solver_name: str, price_data: pd.DataFrame, demand_data: pd.DataFrame) -> Dict[str, Any]:
+def test_moving_horizon_solver(solver_name: str, price_data: pd.DataFrame, demand_data: pd.DataFrame) -> dict[str, Any]:
     """Test a solver with moving horizon optimization."""
     
     print(f"   >>> Testing {solver_name} solver...")
@@ -95,7 +96,7 @@ def test_moving_horizon_solver(solver_name: str, price_data: pd.DataFrame, deman
         }
 
 
-def main():
+def main() -> list[dict[str, Any]]:
     """Run moving horizon solver speed comparison."""
     
     print("*** Moving Horizon Solver Speed Comparison ***")
@@ -105,11 +106,10 @@ def main():
     solvers_to_test = ["mip"]
     
     # Check if Gurobi is available
-    try:
-        import gurobipy
+    if importlib.util.find_spec("gurobipy") is not None:
         solvers_to_test.append("gurobi")
         print("[OK] Gurobi solver detected and will be tested")
-    except ImportError:
+    else:
         print("[i] Gurobi solver not available, testing only python-mip")
     
     print(f"\n>>> Solvers to test: {', '.join(solvers_to_test)}")
@@ -157,7 +157,7 @@ def main():
             times = [r["solve_time"] for r in successful_results]
             speedup = max(times) / min(times)
             faster_solver = fastest["solver"]
-            slower_solver = [r["solver"] for r in successful_results if r["solver"] != faster_solver][0]
+            slower_solver = next(r["solver"] for r in successful_results if r["solver"] != faster_solver)
             print(f">>> {faster_solver} is {speedup:.1f}x faster than {slower_solver}")
     
     elif len(successful_results) == 1:

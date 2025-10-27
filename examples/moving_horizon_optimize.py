@@ -8,7 +8,6 @@ and demand patterns, runs the moving-horizon optimizer and reports
 spot-market cost savings and basic diagnostics.
 """
 
-from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -16,7 +15,7 @@ import pandas as pd
 from demand_response import moving_horizon
 
 
-def generate_realistic_data(n_hours: int = 72) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def generate_realistic_data(n_hours: int = 72) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Generate simple price and demand data for demonstration.
 
     The produced DataFrames use a DatetimeIndex and contain only the
@@ -44,7 +43,7 @@ def generate_realistic_data(n_hours: int = 72) -> Tuple[pd.DataFrame, pd.DataFra
     return price_data, demand_data
 
 
-def main():
+def main() -> tuple[dict, dict[str, float]]:
     """Run a simple moving-horizon optimization example.
 
     This example generates 3 days of synthetic price/demand data, runs the
