@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dr"
+description = "Demand Response"
+authors = [{name = "Johan Westö", email = "johan.westo@gmail.com"},{name = "Hafiz Muhammad Ahmad Imam", email = "ahmadimam657@gmail.com"}]
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.12"
+dynamic = ["version"]
+dependencies = [
+    # Core runtime dependencies
+    "cffi>=1.17.1",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "tqdm>=4.64.0",
+    # MILP solvers
+    "mip>=1.14.0", # Open-source solver (required)
+    "gurobipy>=12.0.3", # Commercial solver (optional)
+    # Development tools
+    "ruff>=0.12.7", # Linting and formatting
+    "pre-commit>=4.3.0", # Pre-commit hooks
+    "nbstripout>=0.8.1", # Notebook output stripping
+    # Testing
+    "pytest>=7.0.0", # Test framework
+    "pytest-cov>=6.2.1", # Coverage reporting
+]
+
+[project.urls]
+Homepage = "https://github.com/ahmadimam657/demand-response"
+Repository = "https://github.com/ahmadimam657/demand-response"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+fix = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "RUF", "B", "N", "UP", "C4", "T20", "A", "ANN001", "ANN201", "ANN202"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=demand_response -m 'not slow'"
+pythonpath = ["src"]
+markers = [
+    "slow: marks tests as slow (deselected by default)"
+]
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/demand_response"]
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0"
+style = "semver"
+strict = true
