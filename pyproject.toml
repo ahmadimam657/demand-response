@@ -23,9 +23,12 @@ dependencies = [
     "ruff>=0.12.7", # Linting and formatting
     "pre-commit>=4.3.0", # Pre-commit hooks
     "nbstripout>=0.8.1", # Notebook output stripping
+    "mpl-panel-builder",
     # Testing
     "pytest>=7.0.0", # Test framework
     "pytest-cov>=6.2.1", # Coverage reporting
+    "entsoe-py>=0.7.8",
+    "ipykernel>=7.1.0",
 ]
 
 [project.urls]

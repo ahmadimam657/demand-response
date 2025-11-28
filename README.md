@@ -6,9 +6,10 @@
 
 # Energy demand response optimization using virtual storage modeling
 
-[![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <!-- [![PyPI version](https://badge.fury.io/py/demand-response.svg)](https://badge.fury.io/py/demand-response) -->
+[![Ruff Lint](https://github.com/NoviaIntSysGroup/mpl-panel-builder/actions/workflows/lint.yml/badge.svg)](https://github.com/NoviaIntSysGroup/mpl-panel-builder/actions/workflows/lint.yml)
 [![Tests](https://github.com/ahmadimam657/demand-response/actions/workflows/tests.yml/badge.svg)](https://github.com/ahmadimam657/demand-response/actions/workflows/tests.yml)
 
 </div>
@@ -26,56 +27,103 @@
 
 ## Requirements
 
-• Python 3.8 or higher  
+• Python 3.12 or higher  
 • NumPy and Pandas for data handling  
 • tqdm for progress tracking  
 • One of the following solvers:
   - **python-mip** (open-source, uses CBC solver)  
   - **Gurobi** (commercial, requires license)
 
-## How It Works - Transfer Matrix Optimization
+## How It Works - Moving Horizon Transfer Optimization
 
-The optimization engine uses a transfer matrix approach to determine optimal energy movement between time periods. This animated visualization shows how energy demand can be shifted from expensive to cheaper time periods:
+The optimization engine uses a **moving horizon control** strategy with a **transfer matrix approach** to determine optimal energy movement between time periods. Each optimization horizon looks ahead `X` hours and makes decisions for a control period (typically 24 hours), then rolls forward to the next decision point.
 
 <div align="center">
   <img src="assets/transfer_matrix_animation.gif" alt="Transfer Matrix Animation" width="600"/>
 </div>
 
-### Transfer Matrix Concept
+### Moving Horizon Concept
 
-The optimization uses a transfer matrix `T[i,j]` to determine optimal energy movement:
+The moving horizon controller divides time into overlapping optimization windows:
+
+```
+Timeline: [Past Hours] [Control Period] [Lookahead Period]
+          └─────────┘  └──────────────┘ └───────────────┘
+          Fixed from    Current         Future hours
+          previous      decisions       (constraints only)
+          optimization  (optimized)
+```
+
+**Key Time Periods:**
+- **Lookback Hours**: Historical decisions from previous optimizations (fixed constraints)
+- **Control Period**: Hours being actively optimized (typically 24 hours) 
+- **Lookahead Period**: Future hours providing price/demand context (48+ hours total)
+- **Spillover Effects**: Energy transfers from control period that affect future hours
+
+### Transfer Matrix Operation
+
+Within each horizon, the optimization uses a transfer matrix `T[i,j]` to determine energy movement:
 
 ```
 T[i,j] = Amount of energy originally demanded at time i,
-         but actually purchased at time j to minimize costs
+         but purchased at time j to minimize total costs
 ```
 
-**Example:**
+**Physical Constraints:**
+- **Demand Advance**: Can buy energy up to `max_demand_advance` hours early
+- **Demand Delay**: Can buy energy up to `max_demand_delay` hours late  
+- **Transfer Limits**: Maximum energy transfer per hour (`max_hourly_purchase`)
+- **Rate Limits**: Maximum transfer rate (`max_rate`)
+
+**Example Horizon Optimization:**
 ```python
-Original demand: [10, 15, 8, 12] kWh
-Energy prices:   [30, 80, 20, 40] ct/kWh
-Original cost:   10×30 + 15×80 + 8×20 + 12×40 = 2140 ct
+# Hour:           [0, 1, 2, 3, 4, 5, 6, 7, 8]  (Local time)
+# Global Index:   [3, 4, 5, 6, 7, 8, 9,10,11]  (Absolute position)
+# Type:           [←─Control─→] [←─Lookahead─→]
+Original demand:  [10,15, 8,12, 6, 9,14,11, 7] kWh
+Energy prices:    [30,80,20,40,25,35,75,30,45] ct/kWh
 
-# Optimal strategy: Move 10 kWh from expensive hour 1 to cheap hour 2
-Modified purchases: [10, 5, 18, 12] kWh
-New cost:          10×30 + 5×80 + 18×20 + 12×40 = 1540 ct
-Savings:           600 ct (28% reduction)
+# Optimal strategy: Move 10 kWh from expensive hour 1 (80 ct) to cheap hour 2 (20 ct)
+Transfer matrix: T[4,5] = 10 kWh  (from global index 4 to 5)
+Optimized demand: [10, 5,18,12, 6, 9,14,11, 7] kWh
+Cost reduction:   10×(80-20) = 600 ct savings
 ```
+
+### Horizon Rolling Process
+
+The moving horizon algorithm works as follows:
+
+1. **Decision Point**: At each daily decision hour (e.g., 6 AM)
+2. **Horizon Setup**: Create optimization window (e.g., 48 hours ahead)
+3. **Constraint Integration**: Apply spillover effects from previous optimization
+4. **Matrix Optimization**: Solve transfer matrix to minimize costs
+5. **Implementation**: Execute control period decisions (24 hours)
+6. **Spillover Tracking**: Save energy transfers affecting future periods
+7. **Roll Forward**: Move to next decision point and repeat
 
 ### Objective Function
 
-The system minimizes:
+Each horizon minimizes total energy costs:
 ```
-Σ[purchase[t] × price[t] + pos_dev[t] × down_price[t] - neg_dev[t] × up_price[t]]
+Minimize: Σ[purchase[t] * price[t] + pos_dev[t] * down_price[t] -
+              neg_dev[t] * up_price[t]]
 ```
 
 Where:
-- `purchase[t]`: Actual energy purchased at time t
-- `pos_dev[t]`: Positive deviation from reference (consuming more)
-- `neg_dev[t]`: Negative deviation from reference (consuming less)
-- `price[t]`: Spot market price
-- `down_price[t]`: Downregulation price deviation (typically ≤0)
-- `up_price[t]`: Upregulation price deviation (typically ≥0)
+- `purchase[t]`: actual energy purchased at time t
+- `pos_dev[t]`: max(0, purchase[t] - reference[t]) (consuming more than reference)
+- `neg_dev[t]`: max(0, reference[t] - purchase[t]) (consuming less than reference)
+- `reference[t]`: target consumption profile (defaults to demand[t])
+- `price[t]`: spot price (e.g., day-ahead market price)
+- `down_price[t]`: downregulation price deviation from spot (≤0, discount)
+- `up_price[t]`: upregulation price deviation from spot (≥0, payment)
+
+Reserve Market Context:
+
+    - Downregulation: Consuming more (pos_dev) gets discount: down_price[t] < 0
+    - Upregulation: Consuming less (neg_dev) earns payment: -up_price[t] < 0
+
+This approach enables **real-time decision making** while maintaining **global cost optimization** across multiple days of operation.
 
 ## Installation
 
@@ -100,62 +148,9 @@ cd demand-response
 # Install package and development dependencies
 uv sync
 ```
-
-#### Alternative installation with pip
-
-```bash
-# Install in development mode
-pip install -e .
-
-# Or install dependencies manually
-pip install numpy pandas tqdm mip  # Basic installation
-pip install gurobipy              # For commercial solver (requires license)
-```
-
 ## Basic Usage
 
 Optimize energy demand using simple function calls. You first create a `VirtualStorage` instance with your configuration, then either run single optimization or use the moving horizon controller for multi-period optimization.
-
-```python
-import pandas as pd
-import numpy as np
-from demand_response import VirtualStorage, moving_horizon
-
-# Configure optimization parameters (FIXED VERSION)
-config = {
-    'daily_decision_hour': 6,      # Make decisions at 6 AM
-    'n_lookahead_hours': 48,       # 48-hour optimization horizon
-    'virtual_storage': {
-        'max_demand_advance': 12,   # Can buy energy 12 hours early (increased for feasibility)
-        'max_demand_delay': 12,     # Can buy energy 12 hours late
-        'max_hourly_purchase': 20.0, # Max 20 kWh transfer per hour (increased for feasibility)
-        'max_rate': 10.0,          # Max 10 kWh transfer rate (increased for feasibility)
-        'solver': 'mip'            # Use open-source solver
-    }
-}
-
-# Prepare your data
-dates = pd.date_range('2024-01-01', periods=48, freq='h')
-price_data = pd.DataFrame({
-    'price': np.random.uniform(20, 80, 48)  # ct/kWh
-}, index=dates)
-demand_data = pd.DataFrame({
-    'demand': np.random.uniform(8, 15, 48)  # kWh
-}, index=dates)
-
-# Run optimization
-result = moving_horizon(price_data, demand_data, config)
-
-# Access results
-optimized_demand = result['results']['demand']
-demand_shifts = result['results']['shift']
-
-# Calculate cost savings
-original_cost = (price_data['price'] * demand_data['demand']).sum()
-optimized_cost = (price_data['price'] * optimized_demand).sum()
-cost_savings = original_cost - optimized_cost
-savings_percentage = (cost_savings / original_cost) * 100
-```
 
 ### Configuration Options
 
@@ -166,17 +161,9 @@ The configuration dict supports four main sections:
 • `virtual_storage`: Core settings for the virtual storage model  
 • `solver_params`: Optional solver-specific parameters
 
-You can view example configurations by checking the test files:
+You can view example configurations by checking the test files
 
-```python
-# See example configurations in tests/
-import demand_response
-print("Check tests/ folder for configuration examples")
-```
-
-### Single Horizon Optimization
-
-For single optimization window without moving horizon:
+### Simple Optimization Example
 
 ```python
 import numpy as np
@@ -197,34 +184,10 @@ storage = VirtualStorage(
 
 result = storage.optimize_demand(prices, demand)
 optimized_demand = result["optimal_demand"]
+
 ```
-
-## Examples
-
-The repository includes example scripts demonstrating various use cases:
-
-### Example 1: Basic optimization
-
-```bash
-# Run basic demand response optimization
-uv run python examples/basic_optimization.py
-```
-
-### Example 2: Moving horizon with market participation
-
-```bash
-# Multi-period optimization with reserve markets
-uv run python examples/moving_horizon_optimize.py
-```
-
-### Example 3: Solver comparison
-
-```bash
-# Compare open-source vs commercial solver performance
-uv run python examples/solver_comparison.py
-```
-
-## Repository Layout
+Repository layout
+================
 
 ```
 ├── src/demand_response/      # Library code
@@ -239,6 +202,7 @@ uv run python examples/solver_comparison.py
 ├── assets/                  # Documentation assets
 │   ├── logo.svg
 │   └── transfer_matrix_animation.gif
+├── data/                    # Data files
 ├── examples/                # Usage examples
 └── pyproject.toml          # Package configuration
 ```
@@ -271,11 +235,11 @@ uv run pytest --cov=demand_response --cov-report=html
 We welcome contributions! Please follow these steps:
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Create a feature branch (`git checkout -b feature/{some_name}`)
 3. Make your changes
 4. Run the test suite (`uv run pytest`)
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
+5. Commit your changes (`git commit -m 'Add {some_name} feature'`)
+6. Push to the branch (`git push origin feature/{some_name}`)
 7. Open a Pull Request
 
 Please ensure your code follows our style guidelines:
