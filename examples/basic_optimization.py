@@ -177,7 +177,7 @@ def calculate_costs(
     return original_cost, optimal_cost, cost_savings, savings_percent
 
 
-def run_optimization(selected_date: str = SELECTED_DATE) -> dict:
+def run_optimization(selected_date: str = SELECTED_DATE) -> None:
     """Run demand response optimization for a typical 24-hour profile.
     
     Args:
@@ -229,7 +229,7 @@ def run_optimization(selected_date: str = SELECTED_DATE) -> dict:
     optimized_demand = result["optimal_demand"]
     
     # Calculate costs
-    original_cost, optimal_cost, cost_savings, savings_percent = calculate_costs(
+    _, _, cost_savings, savings_percent = calculate_costs(
         prices, demand, optimized_demand
     )
     
@@ -240,21 +240,12 @@ def run_optimization(selected_date: str = SELECTED_DATE) -> dict:
         f"Cost Savings: {cost_savings:,.2f} € ({savings_percent:.1f}%)"
     )
     
-    output_path = f"output/real_data_optimization"
+    output_path = "output/real_data_optimization"
     mpb.save_panel(fig, output_path)
-    
-    return {
-        "date": "typical_day",
-        "original_cost": original_cost,
-        "optimal_cost": optimal_cost,
-        "cost_savings": cost_savings,
-        "savings_percent": savings_percent,
-        "optimized_demand": optimized_demand,
-        "figure": fig,
-    }
-
 
 def main() -> None:
-    result = run_optimization(SELECTED_DATE)
+    run_optimization(SELECTED_DATE)
+
+
 if __name__ == "__main__":
     main()

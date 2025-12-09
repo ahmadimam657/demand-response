@@ -1,8 +1,10 @@
+from __future__ import annotations
+
+import matplotlib.dates as mdates
 import matplotlib.figure
 import mpl_panel_builder as mpb
 import numpy as np
 import numpy.typing as npt
-import matplotlib.dates as mdates
 
 mpb_config = {
     "panel": {
@@ -30,7 +32,12 @@ mpb_config = {
 
 
 
-def plot_optimized_demand(hourly_demand, optimized_demand, hourly_price, hours):
+def plot_optimized_demand(
+    hourly_demand: npt.NDArray[np.floating],
+    optimized_demand: npt.NDArray[np.floating],
+    hourly_price: npt.NDArray[np.floating],
+    hours: npt.NDArray,
+) -> tuple[matplotlib.figure.Figure, list]:
     bar_width = 1 / 24 * 0.9
     # Custom colors: RGB values normalized to 0-1 range
     color_original = (242/255, 125/255, 89/255)  # RGB {242,125,89}
