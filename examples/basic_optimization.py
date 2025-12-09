@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Real Data Demand Response Optimization Example.
+"""Basic Demand Response Optimization Example.
 
 This module demonstrates demand response optimization using real historical
 price and demand data from Finland. It shows how energy consumption can be
 shifted from expensive to cheaper time periods to minimize total costs.
 
-The example uses:
-- Real histo`rical price data (hourly) from Finnish energy market
+Features:
+- Real historical price data (hourly) from Finnish energy market
 - Real historical demand data (15-minute resolution aggregated to hourly)
-- Creates a typical year profile by averaging corresponding hours across multiple years
+- Creates a typical year profile by averaging corresponding hours across years
 - VirtualStorage optimization with configurable parameters
-- Cost savings visualization with quarterly time axis using mpl-panel-builder
+- Cost savings visualization using mpl-panel-builder
 
 """
 from __future__ import annotations
@@ -24,9 +24,11 @@ from utils import plot_optimized_demand
 from demand_response import VirtualStorage
 
 # Configuration constants
-MAX_DEMAND_ADVANCE_HOURS = 2
-MAX_DEMAND_DELAY_HOURS = 3
+SELECTED_DATE = "2021-01-05"
+MAX_DEMAND_ADVANCE = 2
+MAX_DEMAND_DELAY = 3
 SOLVER_TYPE = "mip"
+PRICE_CONVERSION_FACTOR = 10  # Convert from €/MWh to c/kWh
 
 
 def load_and_prepare_data() -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -143,50 +145,6 @@ def load_and_prepare_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     return typical_price, typical_demand
 
 
-def analyze_demand_statistics(hourly_demand: pd.DataFrame) -> dict:
-    """Analyze demand statistics to determine appropriate configuration.
-    
-    Args:
-        hourly_demand: DataFrame with hourly demand values
-        
-    Returns:
-        Dictionary containing demand statistics
-        
-    """
-    stats = {
-        'min': hourly_demand['demand'].min(),
-        'max': hourly_demand['demand'].max(),
-        'mean': hourly_demand['demand'].mean(),
-        'median': hourly_demand['demand'].median(),
-        'std': hourly_demand['demand'].std()
-    }
-    
-    return stats
-
-
-def create_virtual_storage(max_demand: float, mean_demand: float) -> VirtualStorage:
-    """Create and configure VirtualStorage based on actual demand levels.
-    
-    Args:
-        max_demand: Maximum observed demand value
-        mean_demand: Mean demand value
-        
-    Returns:
-        Configured VirtualStorage instance ready for optimization.
-        
-    """
-    max_hourly_purchase = max_demand * 1.5  # Allow 150% of max demand
-    max_rate = mean_demand * 0.3  # Can shift 30% of average demand per hour
-    
-    return VirtualStorage(
-        max_demand_advance=MAX_DEMAND_ADVANCE_HOURS,
-        max_demand_delay=MAX_DEMAND_DELAY_HOURS,
-        max_hourly_purchase=max_hourly_purchase,
-        max_rate=max_rate,
-        solver=SOLVER_TYPE,
-    )
-
-
 def calculate_costs(
     prices: npt.NDArray[np.floating],
     original_demand: npt.NDArray[np.floating],
@@ -219,11 +177,14 @@ def calculate_costs(
     return original_cost, optimal_cost, cost_savings, savings_percent
 
 
-def main() -> dict:
-    """Run optimization with real data and create visualization plots.
+def run_optimization(selected_date: str = SELECTED_DATE) -> dict:
+    """Run demand response optimization for a typical 24-hour profile.
     
+    Args:
+        selected_date: Not used anymore, kept for compatibility
+        
     Returns:
-        Optimization result dictionary from VirtualStorage.optimize_demand()
+        Dictionary containing optimization results and visualization figure
         
     Raises:
         ValueError: If optimization fails or returns invalid results
@@ -232,21 +193,33 @@ def main() -> dict:
     # Load and prepare real data
     price_data, hourly_demand = load_and_prepare_data()
     
-    # Analyze demand to determine configuration
-    stats = analyze_demand_statistics(hourly_demand)
+    # Average across entire year to create a typical 24-hour profile
+    price_data['hour'] = price_data.index.hour
+    hourly_demand['hour'] = hourly_demand.index.hour
     
-    # Use a subset of data for faster optimization (e.g., first week)
-    # Remove or adjust this if you want to optimize the full dataset
-    # HOURS_TO_OPTIMIZE = 168  # One week
-    prices = price_data['price']
-    demand = hourly_demand['demand']
-    hours = np.arange(len(prices))
+    # Group by hour of day and take the mean
+    avg_prices = price_data.groupby('hour')['price'].mean()
+    avg_demand = hourly_demand.groupby('hour')['demand'].mean()
     
-    # print(f"\nOptimizing {HOURS_TO_OPTIMIZE} hours of data...")
+    # Create a single typical day with 24 hours
+    base_date = '2021-01-01'
+    hours = pd.date_range(base_date, periods=24, freq='h')
+    
+    prices = avg_prices.values / PRICE_CONVERSION_FACTOR
+    demand = avg_demand.values
+    
+    # Configure with appropriate limits based on actual demand values
+    config = {
+        "max_demand_advance": MAX_DEMAND_ADVANCE,
+        "max_demand_delay": MAX_DEMAND_DELAY,
+        "max_hourly_purchase": float(demand.max() * 2),
+        "max_rate": float(demand.max()),
+        "solver": SOLVER_TYPE,
+    }
     
     # Configure and run optimization
-    storage = create_virtual_storage(stats['max'], stats['mean'])
-    result = storage.optimize_demand(prices, demand)
+    virtual_storage = VirtualStorage(**config)
+    result = virtual_storage.optimize_demand(prices, demand)
     
     # Validate results
     if "optimal_demand" not in result:
@@ -256,25 +229,32 @@ def main() -> dict:
     optimized_demand = result["optimal_demand"]
     
     # Calculate costs
-    _, _, cost_savings, savings_percent = calculate_costs(
+    original_cost, optimal_cost, cost_savings, savings_percent = calculate_costs(
         prices, demand, optimized_demand
     )
     
-    # Create visualization: Original demand only
-    fig1, axs1 = plot_optimized_demand(demand, None, prices, hours)
-    axs1[0].set_title("Original Demand Profile (Real Data)")
-    mpb.save_panel(fig1, "output/real_data_optimization_original")
-    
-    # Create visualization: Original vs Optimized demand
-    fig2, axs2 = plot_optimized_demand(demand, optimized_demand, prices, hours)
-    axs2[0].set_title(
-        f"Demand Response Optimization (Real Data)\n"
+    # Create visualization
+    fig, axs = plot_optimized_demand(demand, optimized_demand, prices, hours)
+    axs[0].set_title(
+        f"Demand Response Optimization (Typical Day)\n"
         f"Cost Savings: {cost_savings:,.2f} € ({savings_percent:.1f}%)"
     )
-    mpb.save_panel(fig2, "output/real_data_optimization_comparison")
     
-    return result
+    output_path = f"output/real_data_optimization"
+    mpb.save_panel(fig, output_path)
+    
+    return {
+        "date": "typical_day",
+        "original_cost": original_cost,
+        "optimal_cost": optimal_cost,
+        "cost_savings": cost_savings,
+        "savings_percent": savings_percent,
+        "optimized_demand": optimized_demand,
+        "figure": fig,
+    }
 
 
+def main() -> None:
+    result = run_optimization(SELECTED_DATE)
 if __name__ == "__main__":
     main()

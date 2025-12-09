@@ -12,12 +12,20 @@
 [![Tests](https://github.com/ahmadimam657/demand-response/actions/workflows/tests.yml/badge.svg)](https://github.com/ahmadimam657/demand-response/actions/workflows/tests.yml)
 
 </div>
-
+<p align="justify">
 `demand-response` helps you optimize energy costs by intelligently shifting electricity demand across time periods using Mixed Integer Linear Programming (MILP). The library minimizes total purchasing costs while respecting physical and operational constraints through flexible demand scheduling.
-
-📚 **For detailed technical documentation on the transfer matrix and moving horizon optimization, see [TECHNICAL_DOC.md](TECHNICAL_DOC.md)**
+</p>
+📚 **For detailed technical documentation, see [TECHNICAL_DOC.md](TECHNICAL_DOC.md)**
 
 ## Example
+
+<div align="center">
+  <img src="output/real_data_optimization.png" alt="Demand Response Optimization Results" width="800"/>
+</div>
+
+<p align="justify">
+The figure above shows an optimization result for a typical day in Finland using historical electricity price and demand data. The optimization successfully shifts demand from high-price periods to lower-price periods while respecting operational constraints. The original demand (coral bars) is rescheduled to the optimized demand (green bars), reducing total electricity costs by taking advantage of price variations throughout the day.
+</p>
 
 ## Requirements
 
@@ -39,9 +47,10 @@ pip install demand-response
 ```
 
 ### From source (for examples and development)
-
+<p align="justify">
 If you want to explore the examples or contribute to the project, follow these
 steps to install from source:
+</p>
 
 ```bash
 # Clone repository
@@ -52,8 +61,9 @@ cd demand-response
 uv sync
 ```
 ## Basic Usage
-
+<p align="justify">
 Optimize energy demand using simple function calls. You first create a `VirtualStorage` instance with your configuration, then either run single optimization or use the moving horizon controller for multi-period optimization.
+</p>
 
 ### Configuration Options
 

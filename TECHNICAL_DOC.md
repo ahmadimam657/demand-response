@@ -1,12 +1,16 @@
 # Technical Documentation
 
 ## Transfer Matrix Fundamentals
-
+<p align="justify">
 The core of the demand response optimization is the **transfer matrix** approach, which models energy flexibility by allowing demand to be shifted across time periods.
+</p>
 
 ### Transfer Matrix Concept
+<p align="justify">
 
 The transfer matrix `T[i,j]` represents the amount of energy originally demanded at time `i` but purchased at time `j`. This mathematical construct enables the optimizer to find the most cost-effective purchasing schedule while respecting physical constraints.
+
+</p>
 
 <div align="center">
   <img src="assets/transfer_matrix.jpg" alt="Transfer Matrix Mathematical Formulation" width="400" height="400"/>
@@ -45,8 +49,9 @@ Cost reduction:   10×(80-20) = 600 ct savings
 ```
 
 ## Moving Horizon Control Strategy
-
+<p align="justify">
 The optimization engine uses a **moving horizon control** strategy with the transfer matrix approach to determine optimal energy movement between time periods. This approach enables **real-time decision making** while maintaining **global cost optimization** across multiple days of operation. Each optimization horizon looks ahead `X` hours and makes decisions for a control period, then rolls forward to the next decision point. The moving horizon controller divides time into overlapping optimization windows
+</p>
 
 <div align="center">
   <table>

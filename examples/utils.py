@@ -2,12 +2,13 @@ import matplotlib.figure
 import mpl_panel_builder as mpb
 import numpy as np
 import numpy.typing as npt
+import matplotlib.dates as mdates
 
-MPB_CONFIG = {
+mpb_config = {
     "panel": {
         "dimensions": {"width_cm": 19, "height_cm": 8},
         "margins": {
-            "left_cm": 2.0,
+            "left_cm": 2.1,
             "bottom_cm": 1.5,
             "right_cm": 1.5,
             "top_cm": 2.0,
@@ -27,27 +28,15 @@ MPB_CONFIG = {
     },
 }
 
-def plot_optimized_demand(
-    hourly_demand: npt.NDArray[np.floating] | None,
-    optimized_demand: npt.NDArray[np.floating] | None,
-    hourly_price: npt.NDArray[np.floating],
-    hours: npt.NDArray[np.integer],
-) -> tuple[matplotlib.figure.Figure, list]:
-    """Plot original demand, optimized demand, and price profiles.
+
+
+def plot_optimized_demand(hourly_demand, optimized_demand, hourly_price, hours):
+    bar_width = 1 / 24 * 0.9
+    # Custom colors: RGB values normalized to 0-1 range
+    color_original = (242/255, 125/255, 89/255)  # RGB {242,125,89}
+    color_optimized = (166/255, 206/255, 103/255)  # RGB {166,206,103}
     
-    Args:
-        hourly_demand: Original demand profile (can be None)
-        optimized_demand: Optimized demand profile (can be None)
-        hourly_price: Price profile
-        hours: Hour indices for x-axis
-        
-    Returns:
-        A tuple containing the figure and list of axes
-        
-    """
-    bar_width = 0.8
-    colors = mpb.helpers.get_default_colors()
-    mpb.configure(MPB_CONFIG)
+    mpb.configure(mpb_config)
     mpb.set_rc_style()
     fig, axs = mpb.create_panel()
     ax_primary = axs[0][0]
@@ -56,44 +45,39 @@ def plot_optimized_demand(
     if hourly_demand is not None:
         ax_primary.bar(
             hours,
-            hourly_demand / 1000,  # Convert to GWh
+            hourly_demand,
             bar_width,
-            color=colors[7],
+            color=color_original,
             alpha=0.5,
-            label="Original demand",
+            label="Ori. demand",
         )
     if optimized_demand is not None:
         ax_primary.bar(
             hours,
-            optimized_demand / 1000,  # Convert to GWh
+            optimized_demand,
             bar_width,
-            color=colors[2],
+            color=color_optimized,
             alpha=0.5,
-            label="Optimized demand",
+            label="Opt. demand",
         )
-    
     # Axes settings
-    ax_primary.set_ylabel("Demand (GWh)")
-    ax_primary.set_xlabel("Time (Year)")
-    
-    # Set x-axis ticks to show quarterly positions (0, 1/4, 1/2, 3/4, 1)
-    n_hours = len(hours)
-    tick_positions = [0, n_hours // 4, n_hours // 2, 3 * n_hours // 4, n_hours - 1]
-    tick_labels = ['0', '1/4', '1/2', '3/4', '1']
-    ax_primary.set_xticks(tick_positions)
-    ax_primary.set_xticklabels(tick_labels)
+    ax_primary.set_ylabel("Demand (MW)")
+    ax_primary.set_xlabel("Hour")
+    ax_primary.xaxis.set_major_formatter(mdates.DateFormatter("%H"))
 
     # Add another axis for the price
+    # ax_ontop = mpl_helper.get_axes_ontop(fig, ax_main)
+    # move_y_axis_to_right(ax_ontop)
     ax_ontop = ax_primary.twinx()
     ax_ontop.spines["right"].set_visible(True)
 
     # Plot the price
-    ax_ontop.plot(hours, hourly_price, "k", linewidth=2, label="Price")
+    ax_ontop.plot(hours, hourly_price, "k", label="Price")
     ax_ontop.tick_params(axis="y", colors="black")
     ax_ontop.set_ylabel("Price (€/MWh)")
     ax_ontop.set_xlim(ax_primary.get_xlim())
 
-    # Use one legend for both axes
+    # Use one legend for both axis
     all_handles = []
     all_labels = []
     for ax in [ax_primary, ax_ontop]:
