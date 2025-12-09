@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo2.svg" alt="Demand Response Logo" width="400" height="400"/>
+  <img src="assets/logo.svg" alt="Demand Response Logo" width="400" height="400"/>
 </div>
 <div align="center">
 
@@ -15,6 +15,8 @@
 
 `demand-response` helps you optimize energy costs by intelligently shifting electricity demand across time periods using Mixed Integer Linear Programming (MILP). The library minimizes total purchasing costs while respecting physical and operational constraints through flexible demand scheduling.
 
+📚 **For detailed technical documentation on the transfer matrix and moving horizon optimization, see [TECHNICAL_DOC.md](TECHNICAL_DOC.md)**
+
 ## Example
 
 ## Requirements
@@ -25,7 +27,7 @@
 • One of the following solvers:
   - **python-mip** (open-source, uses CBC solver)  
   - **Gurobi** (commercial, requires license)
-  
+
 ## Installation
 
 ### From PyPI (recommended)
