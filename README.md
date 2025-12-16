@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo.svg" alt="Demand Response Logo" width="400" height="400"/>
+  <img src="assets/logo.png" alt="Demand Response Logo" width="400" height="500"/>
 </div>
 <div align="center">
 
@@ -24,7 +24,8 @@
 </div>
 
 <p align="justify">
-The figure above shows an optimization result for a typical day in Finland using historical electricity price and demand data. The optimization successfully shifts demand from high-price periods to lower-price periods while respecting operational constraints. The original demand (coral bars) is rescheduled to the optimized demand (green bars), reducing total electricity costs by taking advantage of price variations throughout the day.
+The figure above shows a demand response optimization result for an average household in Finland using real electricity price data from 2024.
+How it works: The optimization algorithm shifts electricity consumption away from expensive hours to cheaper hours, while allowing flexibility of up to 2 hours earlier or 3 hours later than originally scheduled. The gray bars represent the original hourly electricity demand, while the green sections show added demand (shifted to cheaper periods) and red sections show removed demand (shifted away from expensive periods).
 </p>
 
 ## Requirements

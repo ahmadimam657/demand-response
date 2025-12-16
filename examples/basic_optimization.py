@@ -1,251 +1,88 @@
-#!/usr/bin/env python3
-"""Basic Demand Response Optimization Example.
-
-This module demonstrates demand response optimization using real historical
-price and demand data from Finland. It shows how energy consumption can be
-shifted from expensive to cheaper time periods to minimize total costs.
-
-Features:
-- Real historical price data (hourly) from Finnish energy market
-- Real historical demand data (15-minute resolution aggregated to hourly)
-- Creates a typical year profile by averaging corresponding hours across years
-- VirtualStorage optimization with configurable parameters
-- Cost savings visualization using mpl-panel-builder
-
-"""
-from __future__ import annotations
-
-import mpl_panel_builder as mpb
 import numpy as np
-import numpy.typing as npt
-import pandas as pd
-from utils import plot_optimized_demand
-
+import mpl_panel_builder as mpb
 from demand_response import VirtualStorage
+import pandas as pd
 
-# Configuration constants
-SELECTED_DATE = "2021-01-05"
+hourly_profile_be03 = pd.read_csv('data/hourly_profile_be03.csv')
+
+
 MAX_DEMAND_ADVANCE = 2
 MAX_DEMAND_DELAY = 3
 SOLVER_TYPE = "mip"
-PRICE_CONVERSION_FACTOR = 10  # Convert from €/MWh to c/kWh
 
-
-def load_and_prepare_data() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Load and prepare real historical price and demand data.
-    
-    Creates a typical year (8760 hours) by averaging all corresponding hours
-    within each season across multiple years of historical data.
-    
-    Returns:
-        A tuple containing:
-        - price_data: DataFrame with hourly prices for a typical year
-        - hourly_demand: DataFrame with hourly demand for a typical year
-        
-    """
-    # -------------------------
-    # Load REAL historical price data (hourly)
-    # -------------------------
-    price_data = pd.read_csv("data/price_data.csv", parse_dates=True, index_col=0)
-    price_data.columns = ["price"]
-    
-    # Ensure DatetimeIndex and convert to timezone-naive
-    price_data.index = pd.to_datetime(price_data.index, utc=True).tz_localize(None)
-    
-    # -------------------------
-    # Load REAL historical demand data (15-minute)
-    # -------------------------
-    df = pd.read_csv("data/demand_data.csv", sep=";", parse_dates=["startTime", "endTime"])
-    
-    # Convert to hourly resolution by grouping by startTime rounded to hour
-    df["start_hour"] = df["startTime"].dt.floor("h")
-    
-    # 15-min values → hourly mean for consumption in MW/h
-    hourly_demand = (
-        df.groupby("start_hour")["Electricity consumption in Finland"]
-        .mean()
-        .to_frame(name="demand")
-    )
-    
-    hourly_demand.index.name = None
-    
-    # Ensure DatetimeIndex and convert to timezone-naive
-    hourly_demand.index = pd.to_datetime(hourly_demand.index, utc=True).tz_localize(None)
-    
-    hourly_demand = hourly_demand.reindex(price_data.index)
-    
-    # -------------------------
-    # Fill missing values with forward fill
-    # -------------------------
-    hourly_demand = hourly_demand.ffill().bfill()
-    
-    # -------------------------
-    # Align both datasets
-    # -------------------------
-    start = max(price_data.index.min(), hourly_demand.index.min())
-    end = min(price_data.index.max(), hourly_demand.index.max())
-    
-    price_data = price_data.loc[start:end]
-    hourly_demand = hourly_demand.loc[start:end]
-    
-    # -------------------------
-    # Clean the data: remove any remaining NaN/None values
-    # -------------------------
-    valid_mask = ~(price_data['price'].isna() | hourly_demand['demand'].isna())
-    price_data = price_data[valid_mask]
-    hourly_demand = hourly_demand[valid_mask]
-    
-    # -------------------------
-    # Create typical year profile using day-of-year and hour
-    # This preserves seasonal patterns better than calendar dates
-    # -------------------------
-    # Add day of year (1-366) and hour of day
-    price_data['dayofyear'] = price_data.index.dayofyear
-    price_data['hour'] = price_data.index.hour
-    
-    hourly_demand['dayofyear'] = hourly_demand.index.dayofyear
-    hourly_demand['hour'] = hourly_demand.index.hour
-    
-    # Group by day of year and hour, then take the median (more robust than mean)
-    typical_price = (
-        price_data.groupby(['dayofyear', 'hour'])['price']
-        .mean()
-        .reset_index()
-    )
-    
-    typical_demand = (
-        hourly_demand.groupby(['dayofyear', 'hour'])['demand']
-        .mean()
-        .reset_index()
-    )
-    
-    # Create a datetime index for a typical non-leap year (2021)
-    base_year = 2021
-    
-    # Create datetime from day of year
-    typical_price['datetime'] = pd.to_datetime(
-        typical_price['dayofyear'].astype(str) + f'-{base_year}', 
-        format='%j-%Y'
-    ) + pd.to_timedelta(typical_price['hour'], unit='h')
-    
-    typical_demand['datetime'] = pd.to_datetime(
-        typical_demand['dayofyear'].astype(str) + f'-{base_year}', 
-        format='%j-%Y'
-    ) + pd.to_timedelta(typical_demand['hour'], unit='h')
-    
-    # Set datetime as index and keep only the value columns
-    typical_price = typical_price.set_index('datetime')[['price']].sort_index()
-    typical_demand = typical_demand.set_index('datetime')[['demand']].sort_index()
-    
-    # Ensure both have the same index
-    common_index = typical_price.index.intersection(typical_demand.index)
-    typical_price = typical_price.loc[common_index]
-    typical_demand = typical_demand.loc[common_index]
-
-    return typical_price, typical_demand
-
-
-def calculate_costs(
-    prices: npt.NDArray[np.floating],
-    original_demand: npt.NDArray[np.floating],
-    optimized_demand: npt.NDArray[np.floating],
-) -> tuple[float, float, float, float]:
-    """Calculate original cost, optimal cost, savings, and savings percentage.
-    
-    Args:
-        prices: Price profile array
-        original_demand: Original demand profile array
-        optimized_demand: Optimized demand profile array
-        
-    Returns:
-        A tuple containing:
-        - original_cost: Total cost with original demand
-        - optimal_cost: Total cost with optimized demand  
-        - cost_savings: Absolute cost savings
-        - savings_percent: Percentage cost savings
-        
-    """
-    original_cost = float(np.sum(prices * original_demand))
-    optimal_cost = float(np.sum(prices * optimized_demand))
-    cost_savings = original_cost - optimal_cost
-    
-    if original_cost > 0:
-        savings_percent = (cost_savings / original_cost) * 100
-    else:
-        savings_percent = 0.0
-        
-    return original_cost, optimal_cost, cost_savings, savings_percent
-
-
-def run_optimization(selected_date: str = SELECTED_DATE) -> None:
-    """Run demand response optimization for a typical 24-hour profile.
-    
-    Args:
-        selected_date: Not used anymore, kept for compatibility
-        
-    Returns:
-        Dictionary containing optimization results and visualization figure
-        
-    Raises:
-        ValueError: If optimization fails or returns invalid results
-        
-    """
-    # Load and prepare real data
-    price_data, hourly_demand = load_and_prepare_data()
-    
-    # Average across entire year to create a typical 24-hour profile
-    price_data['hour'] = price_data.index.hour
-    hourly_demand['hour'] = hourly_demand.index.hour
-    
-    # Group by hour of day and take the mean
-    avg_prices = price_data.groupby('hour')['price'].mean()
-    avg_demand = hourly_demand.groupby('hour')['demand'].mean()
-    
-    # Create a single typical day with 24 hours
-    base_date = '2021-01-01'
-    hours = pd.date_range(base_date, periods=24, freq='h')
-    
-    prices = avg_prices.values / PRICE_CONVERSION_FACTOR
-    demand = avg_demand.values
-    
-    # Configure with appropriate limits based on actual demand values
-    config = {
+mpb_config = {
+    "panel": {
+        "dimensions": {"width_cm": 14, "height_cm": 6},
+        "margins": {
+            "left_cm": 1,
+            "bottom_cm": 0.75,
+            "right_cm": 1.25,
+            "top_cm": 1.25,
+        },
+    },
+    "style": {
+        "theme": "presentation",
+        "rc_params": {
+            "figure.facecolor": "white",
+            "axes.facecolor": "none",
+            "legend.facecolor": "white",
+            "font.size": 11,
+        },
+    },
+    "output": {
+        "format": "png",
+    },
+}
+config = {
         "max_demand_advance": MAX_DEMAND_ADVANCE,
         "max_demand_delay": MAX_DEMAND_DELAY,
-        "max_hourly_purchase": float(demand.max() * 2),
-        "max_rate": float(demand.max()),
+        "max_hourly_purchase": float(hourly_profile_be03['average_value'].values.max() * 2),
+        "max_rate": 1,
         "solver": SOLVER_TYPE,
     }
     
-    # Configure and run optimization
-    virtual_storage = VirtualStorage(**config)
-    result = virtual_storage.optimize_demand(prices, demand)
-    
-    # Validate results
-    if "optimal_demand" not in result:
-        msg = "Invalid optimization result: missing 'optimal_demand'"
-        raise ValueError(msg)
-    
-    optimized_demand = result["optimal_demand"]
-    
-    # Calculate costs
-    _, _, cost_savings, savings_percent = calculate_costs(
-        prices, demand, optimized_demand
-    )
-    
-    # Create visualization
-    fig, axs = plot_optimized_demand(demand, optimized_demand, prices, hours)
-    axs[0].set_title(
-        f"Demand Response Optimization (Typical Day)\n"
-        f"Cost Savings: {cost_savings:,.2f} € ({savings_percent:.1f}%)"
-    )
-    
-    output_path = "output/real_data_optimization"
-    mpb.save_panel(fig, output_path)
 
-def main() -> None:
-    run_optimization(SELECTED_DATE)
+    
+red = "#EB6D44"
+gray = "#9EADB2"
+green = "#50AA46"
+ 
+hours = np.arange(24)
+demand = hourly_profile_be03['average_value'].values
+price = hourly_profile_be03['average_price'].values
 
 
-if __name__ == "__main__":
-    main()
+# Configure and run optimization
+virtual_storage = VirtualStorage(**config)
+result = virtual_storage.optimize_demand(price, demand)
+
+# Extract results from optimization
+shifts = result['optimal_shift']
+optimal_demand = result['optimal_demand']
+
+# Calculate hourly additions and removals from shifts
+# Positive shifts = added demand (green), Negative shifts = removed demand (red)
+add = np.maximum(shifts, 0)
+remove = np.minimum(shifts, 0)
+ 
+mpb.configure(mpb_config)
+mpb.set_rc_style()
+fig, axs = mpb.create_panel(rows=2)
+ 
+ax = axs[0][0]
+ax.plot(hours, price, 'k-o')
+ax.set(xlim=[-1, 24], xticks=[], yticks=[], ylabel="Price")
+ax.spines['left'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+ 
+ax = axs[1][0]
+ax.bar(hours, demand, 0.75, fc=gray, label='Original')
+ax.bar(hours, add, 0.75, bottom=demand, fc=green, label='Added')
+ax.bar(hours, remove, 0.75, bottom=demand, fc=red, label='Removed')
+ 
+ax.set(xlim=[-1, 24], xticks=[], xlabel="Hour", yticks=[], ylabel="Demand")
+ax.spines['left'].set_visible(False)
+ax.spines['bottom'].set_linewidth(3)
+ax.legend(loc='upper right', bbox_to_anchor=(1.1, 3))
+output_path = "output/real_data_optimization"
+mpb.save_panel(fig, output_path)
