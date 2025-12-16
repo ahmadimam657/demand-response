@@ -15,7 +15,8 @@
 <p align="justify">
 `demand-response` helps you optimize energy costs by intelligently shifting electricity demand across time periods using Mixed Integer Linear Programming (MILP). The library minimizes total purchasing costs while respecting physical and operational constraints through flexible demand scheduling.
 </p>
-📚 **For detailed technical documentation, see [TECHNICAL_DOC.md](TECHNICAL_DOC.md)**
+
+📚 **For detailed technical documentation, see [TECHNICAL_DOC.md](https://github.com/ahmadimam657/demand-response/blob/main/TECHNICAL_DOC.md)**
 
 ## Example
 
