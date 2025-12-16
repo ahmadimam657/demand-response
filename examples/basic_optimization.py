@@ -1,7 +1,8 @@
-import numpy as np
 import mpl_panel_builder as mpb
-from demand_response import VirtualStorage
+import numpy as np
 import pandas as pd
+
+from demand_response import VirtualStorage
 
 hourly_profile_be03 = pd.read_csv('data/hourly_profile_be03.csv')
 
