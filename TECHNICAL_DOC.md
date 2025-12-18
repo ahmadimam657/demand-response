@@ -13,7 +13,7 @@ The transfer matrix `T[i,j]` represents the amount of energy originally demanded
 </p>
 
 <div align="center">
-  <img src="assets/transfer_matrix.jpg" alt="Transfer Matrix Mathematical Formulation" width="400" height="400"/>
+  <img src="images/transfer_matrix.png" alt="Transfer Matrix Mathematical Formulation" width="400" height="400"/>
 </div>
 
 ### Matrix Structure
@@ -43,8 +43,8 @@ The optimization engine uses a **moving horizon control** strategy to determine 
 <div align="center">
   <table>
     <tr>
-      <td><img src="assets/transfer_matrix_animation.gif" alt="Moving Horizon Animation" width="300" height = "300"/></td>
-      <td><img src="assets/moving_horizon.jpg" alt="Moving Horizon Diagram" width="300" height = "300"/></td>
+      <td><img src="images/animation.gif" alt="Moving Horizon Animation" width="300" height = "300"/></td>
+      <td><img src="images/moving_horizon.png" alt="Moving Horizon Diagram" width="300" height = "300"/></td>
     </tr>
   </table>
 </div>

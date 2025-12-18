@@ -1,0 +1,89 @@
+% --- Packages ---
+\documentclass[tikz]{standalone}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, decorations.markings}
+
+% --- Parameters ---
+\newcommand{\radius}{2.6}
+
+% --- Colors ---
+\definecolor{clockcolor}{RGB}{45, 55, 72} % not black
+\definecolor{barorange}{RGB}{234,120,72}
+\definecolor{bargray}{RGB}{170,182,186}
+\definecolor{bargreen}{RGB}{87,175,70}
+\definecolor{textcolor}{RGB}{30,45,52}
+
+
+\begin{document}
+\begin{tikzpicture}[line width=1pt, line cap=round, line join=round,x=1mm,y=1mm]
+
+    % Main arc from ~210° to ~-20° with larger arrowhead
+    \draw[clockcolor, line cap=butt,
+          -{Stealth[length=2pt, width=3pt, inset=0pt]}] 
+        (210:\radius) arc (210:-20:\radius);
+    
+    % Hour ticks (from 9 to 2 on clock face:  9, 10, 11, 12, 1, 2)
+    \foreach \angle in {180, 150, 120, 90, 60, 30} {
+        \draw[clockcolor] 
+            (\angle:\radius-0.15) -- (\angle:\radius-0.55);
+    }
+    
+    % Clock hands for 10:00 AM
+    % Hour hand pointing to 10 (150°)
+    \draw[clockcolor] 
+        (0,0) -- (150:1.2);
+    
+    % Minute hand pointing toward 12
+    \draw[clockcolor] 
+    (0,0) -- (90:1.5);
+% === MINIMAL D-SHAPE PLUG (CONNECTED PRONGS) ===
+\begin{scope}[
+    shift={(210:\radius)},
+    rotate=30
+]
+
+    % D-shaped head
+    \path[fill=clockcolor]
+        (-0.45,0)
+        arc[start angle=180, end angle=0, radius=0.45]
+        -- (0.45,-0.35)
+        -- (-0.45,-0.35)
+        -- cycle;
+
+    % Prongs as stroked lines (NO artifacts)
+    \draw[clockcolor, line width=0.12mm]
+        (-0.20,-0.30) -- (-0.20,-0.68);
+    \draw[clockcolor, line width=0.12mm]
+        (0.20,-0.30) -- (0.20,-0.68);
+
+\end{scope}
+
+
+% === BAR CHART ===
+\begin{scope}[shift={(0,-4.5)}] % move bars below clock
+
+    % Bars (left to right)
+    \fill[barorange, rounded corners=0.1mm]
+        (-2.2,0) rectangle (-1.2,2.0);
+
+    \fill[bargray, rounded corners=0.1mm]
+        (-1.0,0) rectangle (0,2.4);
+
+    \fill[bargray, rounded corners=0.1mm]
+        (0.2,0) rectangle (1.2,2.8);
+
+    \fill[bargreen, rounded corners=0.1mm]
+        (1.4,0) rectangle (2.4,3.2);
+
+    % Base platform
+    \draw[textcolor]
+        (-2.6,0) -- (2.6,0);
+
+\end{scope}
+\node[
+  align=center,
+  text=textcolor,
+  font=\sffamily\bfseries\fontsize{2.2}{2.6}\selectfont
+] at (0,-7.2) {Load Shift\\Optimizer};
+\end{tikzpicture}
+\end{document}

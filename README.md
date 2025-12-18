@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo.png" alt="Demand Response Logo" width="400" height="500"/>
+  <img src="images/logo.png" alt="Demand Response Logo" width="250" height="300"/>
 </div>
 <div align="center">
 
@@ -114,11 +114,16 @@ Repository layout
 │   ├── transfer_indices.py   # Transfer matrix operations
 │   └── utils.py             # Logging and utilities
 ├── tests/                   # Test suite
-├── assets/                  # Documentation assets
-│   ├── logo.svg
-│   └── transfer_matrix_animation.gif
+├── assets/scripts/          # LaTeX source files and generation scripts
+│   ├── generate.py          # Script to generate images from LaTeX
+│   ├── make_gif.py          # Script to create animated GIFs
+│   ├── logo.tex             # Logo source
+│   ├── transfer_matrix.tex  # Transfer matrix diagrams
+│   └── *.tex                # Other LaTeX files
+├── images/                  # Generated documentation images
 ├── data/                    # Data files
 ├── examples/                # Usage examples
+├── output/                  # Example output files
 └── pyproject.toml          # Package configuration
 ```
 
