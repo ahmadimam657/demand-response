@@ -11,7 +11,6 @@
 \definecolor{barorange}{RGB}{234,120,72}
 \definecolor{bargray}{RGB}{170,182,186}
 \definecolor{bargreen}{RGB}{87,175,70}
-\definecolor{textcolor}{RGB}{30,45,52}
 
 
 \begin{document}
@@ -76,13 +75,13 @@
         (1.4,0) rectangle (2.4,3.2);
 
     % Base platform
-    \draw[textcolor]
+    \draw[clockcolor]
         (-2.6,0) -- (2.6,0);
 
 \end{scope}
 \node[
   align=center,
-  text=textcolor,
+  text=clockcolor,
   font=\sffamily\bfseries\fontsize{2.2}{2.6}\selectfont
 ] at (0,-7.2) {Load Shift\\Optimizer};
 \end{tikzpicture}
